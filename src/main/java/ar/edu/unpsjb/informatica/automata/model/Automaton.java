@@ -13,13 +13,12 @@ public class Automaton {
     private State initialState;
 
     private Set<State> finalStates;
-    // delta: (Origen, Símbolo) -> Conjunto de Destinos
-    private Map<State, Map<Character, Set<State>>> transitions;
+    private Map<State, Map<Character, Transition>> transitions;
 
     public Automaton() {
-        this.states = new HashSet<>();
-        this.alphabet = new HashSet<>();
-        this.finalStates = new HashSet<>();
+        this.states = new HashSet<State>();
+        this.alphabet = new HashSet<Character>();
+        this.finalStates = new HashSet<State>();
         this.transitions = new HashMap<>();
     }
 
@@ -28,26 +27,31 @@ public class Automaton {
         this.states.addAll(states);
         this.alphabet.addAll(alphabet);
         this.initialState = initialState;
-        this.finalStates.addAll(finalStates);
-        finalStates.forEach(state -> state.setFinalState(true));
+        finalStates.forEach(this::addAcceptingState);
     }
 
     public void addState(State aState) {
         if (aState == null)
-            return;
-        states.add(aState);
+            throw new IllegalArgumentException("El estado proporcionado es nulo");
+        this.states.add(aState);
     }
 
-    public void addAlphabetSymbol(Character c) {
-        alphabet.add(c);
+    public void addAlphabetSymbol(Character aSymbol) {
+        if (aSymbol == null)
+            throw new IllegalArgumentException("El caracter propocionado es nulo");
+        this.alphabet.add(aSymbol);
     }
 
     public void setInitialState(State aState) {
+        if (aState == null)
+            throw new IllegalArgumentException("El estado proporcionado es nulo");
         this.states.add(aState);
         this.initialState = aState;
     }
 
     public void addAcceptingState(State aState) {
+        if (aState == null)
+            throw new IllegalArgumentException("El estado proporcionado es nulo");
         this.states.add(aState);
         this.finalStates.add(aState);
         aState.setFinalState(true);
@@ -63,8 +67,8 @@ public class Automaton {
      */
     public void addTransition(State from, Character symbol, State to) {
 
-        if (from == null || to == null)
-            throw new IllegalArgumentException("invalid state");
+        if (from == null || symbol == null || to == null)
+            throw new IllegalArgumentException("Argumentos invalidos");
 
         this.states.add(from);
         this.states.add(to);
@@ -74,32 +78,39 @@ public class Automaton {
             this.alphabet.add(symbol);
         }
 
-        Map<Character, Set<State>> transitionsFrom = transitions.get(from);
-        if (transitionsFrom == null) {
-            transitionsFrom = new HashMap<>();
-            this.transitions.put(from, transitionsFrom);
-        }
+        Transition transition = getTransition(from, symbol);
+        if (transition == null) {
+            Map<Character, Transition> transitionsFrom = transitions.get(from);
+            if (transitionsFrom == null) {
+                transitionsFrom = new HashMap<>();
+                transitions.put(from, transitionsFrom);
+            }
 
-        Set<State> transitionsStates = transitionsFrom.get(symbol);
-        if (transitionsStates == null) {
-            transitionsStates = new HashSet<State>();
-            transitionsFrom.put(symbol, transitionsStates);
+            transition = new Transition(from, symbol, new HashSet<>());
+            transitionsFrom.put(symbol, transition);
         }
-        transitionsStates.add(to);
+        transition.getTo().add(to);
     }
 
     public Set<State> getTransitions(State from, Character symbol) {
 
-        Map<Character, Set<State>> transitionsFrom = transitions.get(from);
+        Map<Character, Transition> transitionsFrom = transitions.get(from);
         if (transitionsFrom == null) {
             return new HashSet<>();
         }
 
-        Set<State> statesTransition = transitionsFrom.get(symbol);
-        if (statesTransition == null)
+        Transition transition = transitionsFrom.get(symbol);
+        if (transition == null)
             return new HashSet<>();
 
-        return statesTransition;
+        return transition.getTo();
+    }
+
+    public Transition getTransition(State from, Character symbol) {
+        if (from == null || symbol == null)
+            throw new IllegalArgumentException("Argumentos invalidos, no se pudo obtener la transicion");
+        Map<Character, Transition> transitionsFrom = transitions.get(from);
+        return transitionsFrom == null ? null : transitionsFrom.get(symbol);
     }
 
     /**
@@ -108,12 +119,12 @@ public class Automaton {
      * - Para cada estado y cada símbolo del alfabeto, hay a lo sumo 1 transición.
      */
     public boolean isDeterministic() {
-        for (Map<Character, Set<State>> transition : transitions.values()) {
+        for (Map<Character, Transition> transition : transitions.values()) {
             if (transition.containsKey(EPSILON))
                 return false;
 
-            for (Set<State> statesTransion : transition.values()) {
-                if (statesTransion.size() > 1)
+            for (Transition trasition : transition.values()) {
+                if (trasition.getTo().size() > 1)
                     return false;
             }
         }
@@ -140,9 +151,12 @@ public class Automaton {
             return true;
         }
 
-        for (State epsilonDestination : getTransitions(currentState, EPSILON)) {
-            if (transition(epsilonDestination, chain, index)) {
-                return true;
+        Transition epsilonTransition = getTransition(currentState, EPSILON);
+        if (epsilonTransition != null) {
+            for (State epsilonDestination : epsilonTransition.getTo()) {
+                if (transition(epsilonDestination, chain, index)) {
+                    return true;
+                }
             }
         }
 
@@ -150,9 +164,12 @@ public class Automaton {
             return false;
         }
 
-        for (State destination : getTransitions(currentState, chain.charAt(index))) {
-            if (transition(destination, chain, index + 1)) {
-                return true;
+        Transition symbolTransition = getTransition(currentState, chain.charAt(index));
+        if (symbolTransition != null) {
+            for (State destination : symbolTransition.getTo()) {
+                if (transition(destination, chain, index + 1)) {
+                    return true;
+                }
             }
         }
 
@@ -163,18 +180,15 @@ public class Automaton {
         if (isDeterministic())
             return this;
 
-        for (Map<Character, Set<State>> transition : transitions.values()) {
-
-            for (Set<State> statesTransion : transition.values()) {
-                if (statesTransion.size() > 1) {
+        for (Map<Character, Transition> outgoingTransitions : transitions.values()) {
+            for (Transition transition : outgoingTransitions.values()) {
+                if (transition.getTo().size() > 1) {
                     StringBuilder stateNew = new StringBuilder();
-                    for (State state : statesTransion) {
+                    for (State state : transition.getTo()) {
                         stateNew.append(state.toString());
                         stateNew.append("-");
                     }
-                    String nameNewState = stateNew.substring(0,stateNew.length() - 1);
-                    System.out.println("El nuevo nombre es ");
-                    System.out.println(nameNewState);
+                    String nameNewState = stateNew.substring(0, stateNew.length() - 1);
                 }
             }
         }
