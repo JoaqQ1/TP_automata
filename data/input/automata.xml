@@ -1,0 +1,24 @@
+<automaton>
+  <alphabet>
+    <symbol>a</symbol>
+    <symbol>b</symbol>
+  </alphabet>
+  <states>
+    <state>q0</state>
+    <state>q1</state>
+  </states>
+  <initialState>q0</initialState>
+  <acceptingStates>
+    <state>q1</state>
+  </acceptingStates>
+  <transitions>
+    <transition>
+      <from>q0</from>
+      <symbol>a</symbol>
+      <to>
+        <target>q0</target>
+        <target>q1</target>
+      </to>
+    </transition>
+  </transitions>
+</automaton>

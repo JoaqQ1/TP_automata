@@ -1,0 +1,23 @@
+{
+  "alphabet": ["a", "b"],
+  "states": ["q0", "q1"],
+  "initialState": "q0",
+  "acceptingStates": ["q1"],
+  "transitions": [
+    {
+      "from": "q0",
+      "symbol": "a",
+      "to": ["q1","q0"]
+    },
+    {
+      "from": "q1",
+      "symbol": "b",
+      "to": ["q0"]
+    },
+    {
+      "from": "q1",
+      "symbol": "a",
+      "to": ["q1","q0"]
+    }
+  ]
+}
