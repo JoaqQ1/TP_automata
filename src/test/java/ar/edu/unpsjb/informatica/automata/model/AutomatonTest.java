@@ -43,6 +43,20 @@ class AutomatonTest {
     }
 
     @Test
+    void shouldStoreTransitionsForDifferentSymbolsFromTheSameState() {
+        Automaton automaton = new Automaton();
+        State initial = new State("q0");
+        State firstDestination = new State("q1");
+        State secondDestination = new State("q2");
+
+        automaton.addTransition(initial, 'a', firstDestination);
+        automaton.addTransition(initial, 'b', secondDestination);
+
+        assertTrue(automaton.getTransitions(initial, 'a').contains(firstDestination));
+        assertTrue(automaton.getTransitions(initial, 'b').contains(secondDestination));
+    }
+
+    @Test
     void shouldAcceptAStringThatBelongsToTheAutomatonLanguage() {
         Automaton automaton = new Automaton();
         State initial = new State("q0");
@@ -66,6 +80,16 @@ class AutomatonTest {
         automaton.addTransition(initial, 'a', accepting);
 
         assertFalse(automaton.accepts("b"));
+    }
+
+    @Test
+    void shouldNotCreateTransitionsWhenCheckingAnUnacceptedString() {
+        Automaton automaton = new Automaton();
+        State initial = new State("q0");
+        automaton.setInitialState(initial);
+
+        assertFalse(automaton.accepts("a"));
+        assertTrue(automaton.isDeterministic());
     }
 
     @Test
@@ -107,7 +131,7 @@ class AutomatonTest {
         automaton.addTransition(intermediate, 'a', accepting);
 
         assertFalse(automaton.isDeterministic());
-        Automaton afn = automaton.toAfn();
+        Automaton afn = automaton.toAfd();
         assertTrue(automaton.isDeterministic());
 
     }
