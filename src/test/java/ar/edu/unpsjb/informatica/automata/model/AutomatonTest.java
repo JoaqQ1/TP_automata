@@ -93,4 +93,22 @@ class AutomatonTest {
 
         assertTrue(automaton.accepts("a"));
     }
+
+    @Test
+    void fromAfndToAfd() {
+        Automaton automaton = new Automaton();
+        State initial = new State("q0");
+        State intermediate = new State("q1");
+        State accepting = new State("q2");
+
+        automaton.setInitialState(initial);
+        automaton.addAcceptingState(accepting);
+        automaton.addTransition(initial, Automaton.EPSILON, intermediate);
+        automaton.addTransition(intermediate, 'a', accepting);
+
+        assertFalse(automaton.isDeterministic());
+        Automaton afn = automaton.toAfn();
+        assertTrue(automaton.isDeterministic());
+
+    }
 }
