@@ -52,6 +52,6 @@ public class Main {
         }
 
         String cadena = "abaaa";
-        System.out.println(automaton.accepts(cadena));
+        automaton.toAfd();
     }
 }
