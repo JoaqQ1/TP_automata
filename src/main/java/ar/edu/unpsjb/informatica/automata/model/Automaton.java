@@ -122,8 +122,10 @@ public class Automaton {
 
     /**
      * Corrobora si la cadena pasada por parametro es aceptada por el automata.
+     * 
      * @param chain Cadena a evaluar
-     * @return Retornara true en caso de pertenecer al lenguaje aceptado por el automata o false en caso contrario
+     * @return Retornara true en caso de pertenecer al lenguaje aceptado por el
+     *         automata o false en caso contrario
      */
     public boolean accepts(String chain) {
         if (chain == null || initialState == null)
@@ -137,7 +139,6 @@ public class Automaton {
         if (index == chain.length() && currentState.isFinalState()) {
             return true;
         }
-        
 
         for (State epsilonDestination : getTransitions(currentState, EPSILON)) {
             if (transition(epsilonDestination, chain, index)) {
@@ -154,8 +155,30 @@ public class Automaton {
                 return true;
             }
         }
-        
+
         return false;
     }
 
+    public Automaton toAfd() {
+        if (isDeterministic())
+            return this;
+
+        for (Map<Character, Set<State>> transition : transitions.values()) {
+
+            for (Set<State> statesTransion : transition.values()) {
+                if (statesTransion.size() > 1) {
+                    StringBuilder stateNew = new StringBuilder();
+                    for (State state : statesTransion) {
+                        stateNew.append(state.toString());
+                        stateNew.append("-");
+                    }
+                    String nameNewState = stateNew.substring(0,stateNew.length() - 1);
+                    System.out.println("El nuevo nombre es ");
+                    System.out.println(nameNewState);
+                }
+            }
+        }
+
+        return null;
+    }
 }
