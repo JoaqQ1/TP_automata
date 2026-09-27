@@ -50,8 +50,14 @@ public class Main {
                 automaton.addTransition(from, symbol, to);
             }
         }
-
-        String cadena = "abaaa";
-        automaton.toAfd();
+        System.out.println("Automata cargado correctamente");
+        System.out.println(automaton.isDeterministic());
+        String cadena = "ab";
+        if (automaton.accepts(cadena)) {
+            System.out.println("La cadena es aceptada");
+        } else {
+            System.out.println("La cadena no pertenece al lenguaje");
+        }
+        // automaton.toAfd();
     }
 }
