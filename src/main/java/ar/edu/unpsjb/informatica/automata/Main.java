@@ -51,13 +51,11 @@ public class Main {
             }
         }
         System.out.println("Automata cargado correctamente");
-        System.out.println(automaton.isDeterministic());
-        String cadena = "ab";
-        if (automaton.accepts(cadena)) {
-            System.out.println("La cadena es aceptada");
-        } else {
-            System.out.println("La cadena no pertenece al lenguaje");
-        }
-        // automaton.toAfd();
+        String cadena = "abaaa";
+        automaton.accepts(cadena);
+        System.out.println("Es determinista " + automaton.isDeterministic());
+        Automaton afd = automaton.toAfd();
+        afd.accepts(cadena);
+        System.out.println("Es determinista " + afd.isDeterministic());
     }
 }
