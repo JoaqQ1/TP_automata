@@ -52,8 +52,8 @@ class AutomatonTest {
         automaton.addTransition(initial, 'a', firstDestination);
         automaton.addTransition(initial, 'b', secondDestination);
 
-        assertTrue(automaton.getTransitions(initial, 'a').contains(firstDestination));
-        assertTrue(automaton.getTransitions(initial, 'b').contains(secondDestination));
+        assertTrue(automaton.getTransition(initial, 'a').getTo().contains(firstDestination));
+        assertTrue(automaton.getTransition(initial, 'b').getTo().contains(secondDestination));
     }
 
     @Test
@@ -132,7 +132,7 @@ class AutomatonTest {
 
         assertFalse(automaton.isDeterministic());
         Automaton afn = automaton.toAfd();
-        assertTrue(automaton.isDeterministic());
+        assertTrue(afn.isDeterministic());
 
     }
 }
