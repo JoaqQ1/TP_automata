@@ -1,8 +1,11 @@
 package ar.edu.unpsjb.informatica.automata.model;
 
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.Map;
+import java.util.Queue;
 import java.util.Set;
 
 public class Automaton {
@@ -28,6 +31,42 @@ public class Automaton {
         this.alphabet.addAll(alphabet);
         this.initialState = initialState;
         finalStates.forEach(this::addAcceptingState);
+    }
+
+    public Set<State> getStates() {
+        return states;
+    }
+
+    public void setStates(Set<State> states) {
+        this.states = states;
+    }
+
+    public Set<Character> getAlphabet() {
+        return alphabet;
+    }
+
+    public void setAlphabet(Set<Character> alphabet) {
+        this.alphabet = alphabet;
+    }
+
+    public State getInitialState() {
+        return initialState;
+    }
+
+    public Set<State> getFinalStates() {
+        return finalStates;
+    }
+
+    public void setFinalStates(Set<State> finalStates) {
+        this.finalStates = finalStates;
+    }
+
+    public Map<State, Map<Character, Transition>> getTransitions() {
+        return transitions;
+    }
+
+    public void setTransitions(Map<State, Map<Character, Transition>> transitions) {
+        this.transitions = transitions;
     }
 
     public void addState(State aState) {
@@ -92,20 +131,6 @@ public class Automaton {
         transition.getTo().add(to);
     }
 
-    public Set<State> getTransitions(State from, Character symbol) {
-
-        Map<Character, Transition> transitionsFrom = transitions.get(from);
-        if (transitionsFrom == null) {
-            return new HashSet<>();
-        }
-
-        Transition transition = transitionsFrom.get(symbol);
-        if (transition == null)
-            return new HashSet<>();
-
-        return transition.getTo();
-    }
-
     public Transition getTransition(State from, Character symbol) {
         if (from == null || symbol == null)
             throw new IllegalArgumentException("Argumentos invalidos, no se pudo obtener la transicion");
@@ -143,56 +168,131 @@ public class Automaton {
             return false;
         // Quito todos los espacios
         chain = chain.replaceAll("\\s+", "");
-        return transition(initialState, chain, 0);
+        System.out.println("\n=== INICIO DE EVALUACIÓN: \"" + chain + "\" ===");
+        boolean result = transition(initialState, chain, 0);
+        System.out.println("=== FIN DE EVALUACIÓN -> Resultado: " + result + " ===\n");
+        return result;
     }
 
     private boolean transition(State currentState, String chain, int index) {
+        // Caso base: llegamos al final de la cadena y estamos en un estado final
         if (index == chain.length() && currentState.isFinalState()) {
+            System.out.println("-> ¡ACEPTADO! Llegamos al final de la cadena en el estado final: " + currentState);
             return true;
         }
 
+        // 1. Explorar transiciones épsilon (si existen)
         Transition epsilonTransition = getTransition(currentState, EPSILON);
         if (epsilonTransition != null) {
             for (State epsilonDestination : epsilonTransition.getTo()) {
+                System.out.println("[ε-TRANSICIÓN] De " + currentState + " -> " + epsilonDestination + " (sin consumir caracteres)");
                 if (transition(epsilonDestination, chain, index)) {
                     return true;
                 }
             }
         }
 
+        // Si ya terminamos la cadena pero no estamos en un estado final
         if (index == chain.length()) {
-            return false;
+            return false; // Silencioso para no saturar si hay múltiples caminos muertos
         }
 
-        Transition symbolTransition = getTransition(currentState, chain.charAt(index));
+        char currentChar = chain.charAt(index);
+        
+        // 2. Explorar transiciones con el símbolo actual de la cadena
+        Transition symbolTransition = getTransition(currentState, currentChar);
         if (symbolTransition != null) {
             for (State destination : symbolTransition.getTo()) {
+                System.out.println("[TRANSICIÓN] De " + currentState + " -> " + destination + " leyendo '" + currentChar + "' (posición " + index + ")");
                 if (transition(destination, chain, index + 1)) {
                     return true;
                 }
             }
+        } else {
+            // Opcional: Descomentar si quieres ver cuando un camino se bloquea por completo
+            // System.out.println("[BLOQUEADO] No hay transición desde " + currentState + " con el símbolo '" + currentChar + "'");
         }
 
         return false;
     }
-
     public Automaton toAfd() {
         if (isDeterministic())
             return this;
 
-        for (Map<Character, Transition> outgoingTransitions : transitions.values()) {
-            for (Transition transition : outgoingTransitions.values()) {
-                if (transition.getTo().size() > 1) {
-                    StringBuilder stateNew = new StringBuilder();
-                    for (State state : transition.getTo()) {
-                        stateNew.append(state.toString());
-                        stateNew.append("-");
+        Automaton afd = new Automaton();
+
+        // Agrego el alfabeto y el estado inicial
+        afd.setAlphabet(new HashSet<>(this.alphabet));
+        afd.setInitialState(this.initialState);
+
+        Set<State> initialSet = new HashSet<>();
+        initialSet.add(this.initialState);
+
+        Map<Set<State>, State> unmarkedStatesMap = new HashMap<>();
+        Queue<Set<State>> queue = new LinkedList<>();
+
+        unmarkedStatesMap.put(initialSet, this.initialState);
+        queue.add(initialSet);
+
+        while (!queue.isEmpty()) {
+            Set<State> currentSet = queue.poll();
+            State currentAfdState = unmarkedStatesMap.get(currentSet);
+
+            // Verificamos si es un estado final en el AFD
+            // (es final si al menos uno de los estados del subconjunto es final en el AFN)
+            for (State s : currentSet) {
+                if (s.isFinalState()) {
+                    afd.addAcceptingState(currentAfdState);
+                    break;
+                }
+            }
+
+            // Para cada símbolo del alfabeto, calculamos el conjunto de destino
+            for (Character symbol : this.alphabet) {
+                Set<State> nextSet = new HashSet<>();
+
+                // Calculamos a dónde vamos desde todo el conjunto actual con este símbolo
+                for (State s : currentSet) {
+
+                    Transition destinations = getTransition(s, symbol);
+                    if (destinations != null) {
+                        nextSet.addAll(destinations.getTo());
                     }
-                    String nameNewState = stateNew.substring(0, stateNew.length() - 1);
+                }
+
+                if (!nextSet.isEmpty()) {
+                    // Obtenemos o creamos el estado AFD correspondiente al set resultante
+                    State nextAfdState = unmarkedStatesMap.get(nextSet);
+                    if (nextAfdState == null) {
+                        nextAfdState = createStateFromSet(nextSet);
+                        unmarkedStatesMap.put(nextSet, nextAfdState);
+                        queue.add(nextSet);
+                    }
+
+                    // Agregamos la transición al nuevo AFD
+                    afd.addTransition(currentAfdState, symbol, nextAfdState);
                 }
             }
         }
 
-        return null;
+        return afd;
+    }
+
+    /**
+     * Método auxiliar para crear un nombre/estado único a partir de un conjunto de
+     * estados del AFN.
+     */
+    private State createStateFromSet(Set<State> stateSet) {
+        if (stateSet.size() == 1) {
+            return stateSet.iterator().next();
+        }
+        // Si son varios, los combinamos ordenadamente por nombre/toString
+        StringBuilder sb = new StringBuilder();
+        stateSet.stream()
+                .sorted(Comparator.comparing(Object::toString))
+                .forEach(s -> sb.append(s.toString()).append("_"));
+
+        String compositeName = sb.substring(0, sb.length() - 1);
+        return new State(compositeName);
     }
 }
